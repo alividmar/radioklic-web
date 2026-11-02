@@ -404,9 +404,9 @@ function initAudio(){
 }
 
 function setVol(v){
-  v=Math.max(0,Math.min(1,v));
-  if(gainNode) gainNode.gain.value=v;
-  else         aud.volume=v;
+  // Web Audio omogoča tudi dvig nad 100 % (do 200 %); brez njega je max 100 %
+  if(gainNode){ gainNode.gain.value=Math.max(0,Math.min(2,v)); }
+  else        { aud.volume=Math.max(0,Math.min(1,v)); }
 }
 
 // ─── Init ─────────────────────────────────────────────
@@ -852,7 +852,7 @@ function pollICY(url, kw) {
   // Takoj preberi
   fetchAndUpdate(url, kw);
   // Ponavljaj vsakih 30s
-  icyInterval = setInterval(() => fetchAndUpdate(url, kw), 30000);
+  icyInterval = setInterval(() => fetchAndUpdate(url, kw), 10000);
 }
 
 function stopICY() {
@@ -902,7 +902,7 @@ function applyVoiceBoost(isVoice, title) {
 
   if (isVoice && !boostActive) {
     boostActive = true;
-    const target = Math.min(1.5, sett.vol + sett.boost);
+    const target = Math.min(2, sett.vol + sett.boost);
     smoothVol(target, 2.0);
     showBoostBadge(true, title);
   } else if (!isVoice && boostActive) {
@@ -985,7 +985,7 @@ function importSt(inp){
     const arr = JSON.parse(t);
     if(!Array.isArray(arr)) throw new Error('Neveljaven format');
     const have = new Set(stations.map(x=>x.url));
-    arr.filter(x=>x && x.url && !have.has(x.url)).forEach(x=>stations.push({name:x.name||x.url,url:x.url,icon:x.icon||'',kw:x.kw||''}));
+    arr.filter(x=>x && x.url && !have.has(x.url)).forEach(x=>stations.push({name:x.name||x.ime||x.url,url:x.url,icon:x.icon||x.ikona||'',kw:x.kw||''}));
     saveStations(); location.reload();
   }).catch(e => alert('Uvoz ni uspel: '+e.message));
 }
