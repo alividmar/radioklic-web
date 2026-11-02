@@ -563,9 +563,10 @@ function doPlay(){
 
 function onStop(){
   aud.pause();
-  aud.src='';
+  aud.removeAttribute('src');
   aud.load();
   playing=false;
+  document.getElementById('warn').style.display='none';
   setVol(sett.vol);
   setStatus('Ustavljeno');
   document.getElementById('dot').classList.remove('live');
@@ -583,10 +584,14 @@ aud.addEventListener('playing',()=>{
   document.getElementById('bstop').classList.add('on');
   document.getElementById('bstop').textContent='■ Ustavi';
   document.getElementById('hinfo').textContent='V ŽIVO · '+n;
+  document.getElementById('warn').style.display='none';
   setVol(sett.vol);
 });
 aud.addEventListener('waiting',()=>setStatus('Polnim…'));
 aud.addEventListener('error',e=>{
+  // ob ročni ustavitvi / menjavi postaje src ni nastavljen: to ni napaka
+  if(!aud.getAttribute('src')) return;
+  if(typeof stopICY==='function') stopICY();   // brez toka ni dviga glasnosti
   setStatus('Napaka pri predvajanju');
   document.getElementById('warn').style.display='block';
   document.getElementById('dot').classList.remove('live');
@@ -877,6 +882,7 @@ function pollICY(url, kw) {
 
 function stopICY() {
   if (icyInterval) { clearInterval(icyInterval); icyInterval = null; }
+  if (typeof volTimer !== 'undefined' && volTimer) { clearInterval(volTimer); volTimer = null; }
   // Ponastavi boost
   if (boostActive) {
     boostActive = false;
@@ -886,6 +892,8 @@ function stopICY() {
 
 async function fetchAndUpdate(url, kw) {
   const title = await readICYMeta(url);
+  // če tok ne igra (ustavljen / napaka), naslova in dviga ne obdelujemo
+  if (aud.paused || !aud.getAttribute('src')) return;
 
   if (!title) {
     // ICY ni na voljo — pokaži status brez naslova
