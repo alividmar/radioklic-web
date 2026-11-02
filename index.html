@@ -267,7 +267,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
   <input id="set_proxy" placeholder="https://moj-radio.xxx.workers.dev" style="width:100%;margin:4px 0 10px;background:#0f1218;color:#eee;border:1px solid #444;border-radius:8px;padding:8px">
   <div style="font-size:.72rem;color:#999;margin-bottom:10px">Brez proxyja deluje branje naslova samo pri postajah, ki dovolijo CORS. Navodila: README.</div>
   <div style="display:flex;gap:8px;justify-content:space-between">
-    <span><button class="bsm" onclick="exportSt()">Izvozi postaje</button> <button class="bsm" onclick="document.getElementById('impf').click()">Uvozi</button><input type="file" id="impf" accept=".json" style="display:none" onchange="importSt(this)"></span>
+    <span><button class="bsm" onclick="exportSt()">Izvozi postaje</button> <button class="bsm" onclick="document.getElementById('impf').click()">Uvozi</button><input type="file" id="impf" accept=".json,.txt,text/plain" style="display:none" onchange="importSt(this)"></span>
     <button class="bsm bts" onclick="saveSett()">Shrani</button>
   </div>
 </dialog>
@@ -403,7 +403,14 @@ function initAudio(){
   }
 }
 
+function showVolLabel(v){
+  const el=document.getElementById('vval'); if(!el) return;
+  const base=Math.round(sett.vol*100), cur=Math.round(v*100);
+  if(boostActive && cur!==base){ el.textContent=base+'% → '+cur+'%'; el.style.color='var(--live, #16a34a)'; }
+  else { el.textContent=base+'%'; el.style.color=''; }
+}
 function setVol(v){
+  showVolLabel(v);
   // Web Audio omogoča tudi dvig nad 100 % (do 200 %); brez njega je max 100 %
   if(gainNode){ gainNode.gain.value=Math.max(0,Math.min(2,v)); }
   else        { aud.volume=Math.max(0,Math.min(1,v)); }
@@ -521,6 +528,18 @@ function onPlay(){
   doPlay();
 }
 
+// http:// tokovi se na https strani blokirajo: poskusi https, ali pa pelji prek proxyja (če je nastavljen)
+function httpsUrl(u){
+  return u.replace(/^http:\/\/mp3\.rtvslo\.si:8000\//,'https://mp3.rtvslo.si/').replace(/^http:\/\//,'https://');
+}
+function playUrl(u){
+  if(location.protocol==='https:' && /^http:\/\//i.test(u)){
+    if(sett.proxy) return sett.proxy.replace(/\/$/,'')+'/stream?url='+encodeURIComponent(u);
+    return httpsUrl(u);
+  }
+  return u;
+}
+
 function doPlay(){
   if(curIdx<0||!stations[curIdx]) return;
   const s=stations[curIdx];
@@ -528,7 +547,7 @@ function doPlay(){
   aud.pause();
   aud.removeAttribute('src');
   aud.load();
-  aud.src=s.url;
+  aud.src=playUrl(s.url);
   setVol(sett.vol);
   const p=aud.play();
   if(p&&p.catch){
@@ -789,6 +808,7 @@ async function readICYMeta(url) {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 8000);
 
+    if (location.protocol==='https:') url = httpsUrl(url);
     const res = await fetch(url, {
       headers: { 'Icy-MetaData': '1', 'User-Agent': 'WinampMPEG/5.0' },
       signal: ctrl.signal
@@ -973,21 +993,43 @@ function saveSett(){
   saveSetts();
   document.getElementById('settd').close();
 }
+function parseStationsText(t){
+  t=t.trim();
+  if(t.startsWith('[')||t.startsWith('{')){
+    let arr=JSON.parse(t); if(!Array.isArray(arr)) arr=[arr];
+    return arr.filter(x=>x&&x.url).map(x=>({name:x.name||x.ime||x.url,url:x.url,icon:x.icon||x.ikona||'',kw:x.kw||''}));
+  }
+  // TXT: "Ime = URL = data:image/png;base64,..." (ikona neobvezna), vrstice z # so komentarji
+  const out=[];
+  for(const line of t.split(/\r?\n/)){
+    const l=line.trim(); if(!l||l.startsWith('#')) continue;
+    let parts=l.split(' = ');
+    if(parts.length<2){ const i=l.indexOf('='); if(i<0) continue; parts=[l.slice(0,i),l.slice(i+1)]; }
+    const name=parts[0].trim(), url=parts[1].trim(), icon=(parts[2]||'').trim();
+    if(name&&/^https?:\/\//i.test(url)) out.push({name,url,icon,kw:''});
+  }
+  return out;
+}
+function importSt(inp){
+  const f = inp.files[0]; if(!f) return;
+  f.text().then(t => {
+    const arr = parseStationsText(t);
+    if(!arr.length) throw new Error('V datoteki ni postaj');
+    const replace = confirm(arr.length+' postaj najdenih.\n\nOK = ZAMENJAJ obstoječe\nPrekliči = DODAJ k obstoječim');
+    if(replace){ stations = arr; }
+    else {
+      const have = new Set(stations.map(x=>x.url));
+      arr.forEach(x=>{ if(!have.has(x.url)){ stations.push(x); have.add(x.url); } });
+    }
+    saveStations(); location.reload();
+  }).catch(e => alert('Uvoz ni uspel: '+e.message));
+  inp.value='';
+}
 function exportSt(){
   const blob = new Blob([JSON.stringify(stations,null,2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'radioklic-postaje.json'; a.click();
   URL.revokeObjectURL(a.href);
-}
-function importSt(inp){
-  const f = inp.files[0]; if(!f) return;
-  f.text().then(t => {
-    const arr = JSON.parse(t);
-    if(!Array.isArray(arr)) throw new Error('Neveljaven format');
-    const have = new Set(stations.map(x=>x.url));
-    arr.filter(x=>x && x.url && !have.has(x.url)).forEach(x=>stations.push({name:x.name||x.ime||x.url,url:x.url,icon:x.icon||x.ikona||'',kw:x.kw||''}));
-    saveStations(); location.reload();
-  }).catch(e => alert('Uvoz ni uspel: '+e.message));
 }
 console.log('ICY metadata modul naložen.');
 </script>
