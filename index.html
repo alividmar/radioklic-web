@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadioKlic Web</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#cc2200;--green:#1a7a30;--bg:#f0ece6;--card:#fff;--card2:#e8e2da;
+  --border:#d0c8bc;--text:#1a1410;--muted:#7a6e64;--live:#1a8c3a;
+  --r:10px;color-scheme:light dark;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1a1614;--card:#252018;--card2:#302820;--border:#44362a;
+        --text:#ede8e0;--muted:#9a8c7e;}
+}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);
+  font-size:14px;line-height:1.5;min-height:100vh;}
+
+.header{background:var(--red);color:#fff;padding:10px 16px;display:flex;
+  align-items:center;gap:10px;}
+.logo{font-size:1.2rem;font-weight:700;}
+.hdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);
+  transition:background .3s;}
+.hdot.live{background:#4dff88;box-shadow:0 0 6px #4dff88;}
+.hinfo{font-size:.75rem;opacity:.7;margin-left:auto;}
+
+.app{max-width:660px;margin:0 auto;padding:12px 12px 40px;}
+
+.card{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 14px;margin-bottom:10px;}
+
+/* Station row */
+.srow{display:flex;gap:10px;margin-bottom:10px;}
+.sinfo{flex:1;min-width:0;}
+.active-ico{width:86px;height:86px;background:var(--card2);
+  border:1px solid var(--border);border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;font-weight:700;color:var(--muted);
+  overflow:hidden;flex-shrink:0;}
+.active-ico img{width:100%;height:100%;object-fit:cover;
+  border-radius:calc(var(--r) - 2px);}
+
+.lbl{font-size:.7rem;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+
+.ssel{display:flex;gap:4px;align-items:center;}
+.ssel select{flex:1;padding:7px 9px;border:1px solid var(--border);
+  border-radius:6px;background:var(--card2);color:var(--text);
+  font-size:.9rem;font-weight:500;outline:none;cursor:pointer;}
+.bnav{width:30px;height:32px;background:var(--card2);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;font-size:.85rem;color:var(--text);
+  display:flex;align-items:center;justify-content:center;}
+.bnav:hover{background:var(--border);}
+
+.nowplay{margin-top:8px;font-size:.8rem;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:18px;}
+.nowplay.live-txt{color:var(--live);font-weight:500;}
+
+/* Volume row */
+.vrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.vgroup{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:10px 12px;}
+.vgroup .vlabel{display:flex;justify-content:space-between;
+  font-size:.75rem;color:var(--muted);margin-bottom:6px;font-weight:500;}
+.vgroup .vlabel b{color:var(--text);}
+input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
+.boost-row{display:flex;align-items:center;gap:5px;margin-top:6px;
+  font-size:.75rem;color:var(--muted);cursor:pointer;user-select:none;}
+.bdot{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);
+  background:var(--red);display:flex;align-items:center;justify-content:center;
+  font-size:.6rem;color:#fff;transition:background .15s;flex-shrink:0;}
+.bdot.on{background:var(--green);border-color:var(--green);}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:10px;}
+.gbtn{aspect-ratio:1;background:var(--card);border:1.5px solid var(--border);
+  border-radius:7px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;overflow:hidden;
+  transition:border-color .12s,transform .1s;padding:2px;}
+.gbtn:hover{border-color:var(--red);transform:scale(1.05);}
+.gbtn.act{border-color:var(--red);border-width:2px;background:#fff0ee;}
+@media(prefers-color-scheme:dark){.gbtn.act{background:#2a1008;}}
+.gbtn img{width:58%;height:58%;object-fit:contain;border-radius:4px;}
+.ginitials{width:58%;height:58%;border-radius:50%;background:var(--red);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.58rem;font-weight:700;}
+.gname{font-size:.5rem;color:var(--muted);text-align:center;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%;padding:0 2px;}
+.gempty{opacity:.25;cursor:default;}
+.gempty:hover{transform:none;border-color:var(--border);}
+
+/* Controls */
+.ctrl{display:flex;gap:6px;margin-bottom:8px;}
+.btn{padding:9px 16px;border:none;border-radius:7px;cursor:pointer;
+  font-size:.88rem;font-weight:600;transition:opacity .15s,transform .1s;}
+.btn:active{transform:scale(.97);}
+.bplay{background:var(--green);color:#fff;flex:1;}
+.bstop{background:var(--card2);color:var(--text);flex:1;
+  border:1px solid var(--border);}
+.bstop.on{background:var(--red);color:#fff;}
+
+.trow{display:flex;align-items:center;gap:6px;font-size:.8rem;
+  color:var(--muted);flex-wrap:wrap;}
+.trow input[type=number]{width:50px;padding:5px 7px;
+  border:1px solid var(--border);border-radius:6px;
+  background:var(--card2);color:var(--text);font-size:.85rem;
+  text-align:center;outline:none;}
+.bsm{padding:5px 10px;border:none;border-radius:6px;cursor:pointer;
+  font-size:.8rem;font-weight:600;}
+.bts{background:var(--green);color:#fff;}
+.btx{background:var(--card2);color:var(--text);border:1px solid var(--border);}
+.tdisp{color:var(--live);font-weight:600;}
+.statbar{text-align:center;font-size:.75rem;color:var(--muted);padding:4px;}
+
+/* Warn */
+.warn{background:#fff3cd;border:1px solid #ffc107;border-left:4px solid #e6a000;
+  border-radius:7px;padding:8px 12px;font-size:.78rem;color:#664d03;
+  margin-bottom:8px;display:none;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:100;align-items:center;justify-content:center;padding:16px;}
+.overlay.open{display:flex;}
+.modal{background:var(--card);border-radius:12px;width:100%;max-width:490px;
+  max-height:85vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+.mhead{padding:13px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;font-weight:600;}
+.mclose{width:26px;height:26px;border:none;background:var(--card2);
+  border-radius:50%;cursor:pointer;font-size:.95rem;color:var(--muted);}
+.mbody{padding:14px 16px;overflow-y:auto;flex:1;}
+.mfoot{padding:10px 16px;border-top:1px solid var(--border);
+  display:flex;gap:6px;justify-content:flex-end;}
+
+.toolbar{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.btool{padding:5px 9px;border:1px solid var(--border);border-radius:6px;
+  background:var(--card2);color:var(--text);font-size:.75rem;cursor:pointer;}
+.btool:hover{background:var(--border);}
+
+.slist{list-style:none;}
+.sitem{display:flex;align-items:center;gap:8px;padding:6px 8px;
+  border-radius:7px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;}
+.sitem:hover{background:var(--card2);}
+.sitem.sel{background:#fff0ee;border-color:var(--red);}
+@media(prefers-color-scheme:dark){.sitem.sel{background:#2a1008;}}
+.sico{width:30px;height:30px;border-radius:6px;background:var(--red);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.6rem;font-weight:700;flex-shrink:0;overflow:hidden;}
+.sico img{width:100%;height:100%;object-fit:cover;}
+.sname{font-weight:500;font-size:.85rem;}
+.surl{font-size:.7rem;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.fg{margin-bottom:9px;}
+.fg label{display:block;font-size:.72rem;font-weight:600;color:var(--muted);
+  margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px;}
+.fg input{width:100%;padding:7px 10px;border:1px solid var(--border);
+  border-radius:7px;background:var(--card2);color:var(--text);
+  font-size:.85rem;outline:none;}
+.fg input:focus{border-color:var(--red);}
+
+/* RB */
+#rblist{list-style:none;max-height:250px;overflow-y:auto;}
+.rbitem{display:flex;align-items:center;gap:8px;padding:6px 8px;
+  border-radius:7px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;}
+.rbitem:hover{background:var(--card2);}
+.rbitem.sel{background:#fff0ee;border-color:var(--red);}
+@media(prefers-color-scheme:dark){.rbitem.sel{background:#2a1008;}}
+.rbico{width:30px;height:30px;border-radius:6px;background:var(--red);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.6rem;font-weight:700;flex-shrink:0;overflow:hidden;}
+.rbico img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+.rbname{font-weight:500;font-size:.85rem;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
+.rbmeta{font-size:.7rem;color:var(--muted);}
+
+.srrow{display:flex;gap:5px;margin-bottom:7px;}
+.srrow select,.srrow input{flex:1;padding:6px 8px;
+  border:1px solid var(--border);border-radius:6px;
+  background:var(--card2);color:var(--text);outline:none;font-size:.82rem;}
+@media(max-width:480px){
+  .grid{grid-template-columns:repeat(4,1fr);}
+  .vrow{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="hdot" id="dot"></div>
+  <div class="logo">◉ RadioKlic</div>
+  <div class="hinfo" id="hinfo">Web · v1.0</div>
+</div>
+
+<div class="app">
+
+  <div class="warn" id="warn">
+    ⚠️ Zvok ni mogoč — stream je morda blokiran (HTTP/CORS).
+    Poskusi v Firefoxu ali preveri URL.
+  </div>
+
+  <!-- Postaja + aktivna ikona -->
+  <div class="srow">
+    <div class="sinfo card" style="margin:0;flex:1">
+      <div class="lbl">Postaja</div>
+      <div class="ssel">
+        <button class="bnav" onclick="prevSt()">◀</button>
+        <select id="stsel" onchange="onSel()"></select>
+        <button class="bnav" onclick="nextSt()">▶</button>
+        <button class="btool" style="margin-left:4px" onclick="openEd()">✏</button>
+        <button class="btool" onclick="openSr()">🌍</button>
+        <button class="btool" onclick="openSett()" title="Nastavitve">⚙</button>
+      </div>
+      <div class="lbl" style="margin-top:8px">Zdaj predvaja</div>
+      <div class="nowplay" id="nowp">—</div>
+    </div>
+    <div class="active-ico" id="aico">?</div>
+  </div>
+
+  <!-- Glasnost + Dvig -->
+  <div class="vrow">
+    <div class="vgroup">
+      <div class="vlabel">🔊 Glasnost <b id="vval">60%</b></div>
+      <input type="range" id="vsl" min="0" max="100" value="60"
+             oninput="onVol(this.value)">
+    </div>
+    <div class="vgroup">
+      <div class="vlabel">🎙 Dvig <b id="bval">+30%</b></div>
+      <input type="range" id="bsl" min="0" max="60" value="30"
+             oninput="onBoostVal(this.value)">
+      <div class="boost-row" onclick="toggleBoost()">
+        <div class="bdot" id="bdot">✕</div>
+        <span id="blbl">Dvig izklopljen</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ikone postaj -->
+  <div class="grid" id="grid"></div>
+
+  <!-- Gumbi + Timer -->
+  <div class="card">
+    <div class="ctrl">
+      <button class="btn bplay" id="bplay" onclick="onPlay()">▶ Predvajaj</button>
+      <button class="btn bstop" id="bstop" onclick="onStop()">■ Ustavi</button>
+    </div>
+    <div class="trow">
+      <span>Timer:</span>
+      <input type="number" id="tmin" value="30" min="1" max="240">
+      <span>min</span>
+      <button class="bsm bts" onclick="startTimer()">▶</button>
+      <button class="bsm btx" onclick="stopTimer()">×</button>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:.78rem">
+        <input type="checkbox" id="fade" checked> Utišaj pred izklopom
+      </label>
+      <span class="tdisp" id="tdisp"></span>
+    </div>
+  </div>
+
+  <dialog id="settd" style="margin:auto;border:1px solid #444;border-radius:14px;background:#1b1f27;color:#eee;padding:16px;max-width:420px;width:92%">
+  <h3 style="margin:0 0 10px">Nastavitve</h3>
+  <label style="font-size:.8rem">Ključne besede za govor (ločene s ;)</label>
+  <textarea id="set_kw" rows="3" style="width:100%;margin:4px 0 10px;background:#0f1218;color:#eee;border:1px solid #444;border-radius:8px;padding:6px"></textarea>
+  <label style="font-size:.8rem">Proxy za naslove skladb (neobvezno, naslov Cloudflare Workerja)</label>
+  <input id="set_proxy" placeholder="https://moj-radio.xxx.workers.dev" style="width:100%;margin:4px 0 10px;background:#0f1218;color:#eee;border:1px solid #444;border-radius:8px;padding:8px">
+  <div style="font-size:.72rem;color:#999;margin-bottom:10px">Brez proxyja deluje branje naslova samo pri postajah, ki dovolijo CORS. Navodila: README.</div>
+  <div style="display:flex;gap:8px;justify-content:space-between">
+    <span><button class="bsm" onclick="exportSt()">Izvozi postaje</button> <button class="bsm" onclick="document.getElementById('impf').click()">Uvozi</button><input type="file" id="impf" accept=".json" style="display:none" onchange="importSt(this)"></span>
+    <button class="bsm bts" onclick="saveSett()">Shrani</button>
+  </div>
+</dialog>
+
+<div class="statbar" id="statbar">Ustavljeno</div>
+</div>
+
+<!-- ══ EDITOR ══ -->
+<div class="overlay" id="edov">
+  <div class="modal">
+    <div class="mhead">✏️ Uredi postaje
+      <button class="mclose" onclick="closeEd()">×</button>
+    </div>
+    <div class="mbody">
+      <div class="toolbar">
+        <button class="btool" onclick="newSt()">➕ Nova</button>
+        <button class="btool" onclick="delSt()">🗑 Izbriši</button>
+        <button class="btool" onclick="mvUp()">▲</button>
+        <button class="btool" onclick="mvDn()">▼</button>
+        <button class="btool" onclick="exportSt()">💾 Izvozi</button>
+        <button class="btool" onclick="importSt()">📂 Uvozi</button>
+        <input type="file" id="ifile" accept=".json,.txt"
+               style="display:none" onchange="onImport(event)">
+      </div>
+      <ul class="slist" id="edlist"></ul>
+      <hr style="border:none;border-top:1px solid var(--border);margin:10px 0">
+      <div id="eform" style="display:none">
+        <div class="fg"><label>Ime postaje</label>
+          <input id="fn" placeholder="npr. Val 202"></div>
+        <div class="fg"><label>Stream URL</label>
+          <input id="fu" placeholder="https://..."></div>
+        <div class="fg"><label>Ključna beseda</label>
+          <input id="fk" placeholder="govorna;glasovanje"></div>
+        <div class="fg"><label>Ikona URL (opcijsko)</label>
+          <input id="fi" placeholder="https://..."></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bplay" style="padding:7px 14px;font-size:.82rem"
+                  onclick="saveSt()">💾 Shrani</button>
+          <button class="btn bstop" style="padding:7px 14px;font-size:.82rem"
+                  onclick="cancelEd()">Prekliči</button>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn bplay" style="padding:7px 16px" onclick="closeEd()">✓ Zapri</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SEARCH ══ -->
+<div class="overlay" id="srov">
+  <div class="modal">
+    <div class="mhead">🌍 Iskanje — Radio Browser
+      <button class="mclose" onclick="closeSr()">×</button>
+    </div>
+    <div class="mbody">
+      <div class="srrow">
+        <select id="rbc">
+          <option value="">Vse države</option>
+          <option value="SI">🇸🇮 Slovenija</option>
+          <option value="HR">🇭🇷 Hrvaška</option>
+          <option value="RS">🇷🇸 Srbija</option>
+          <option value="AT">🇦🇹 Avstrija</option>
+          <option value="DE">🇩🇪 Nemčija</option>
+          <option value="IT">🇮🇹 Italija</option>
+          <option value="GB">🇬🇧 VB</option>
+          <option value="US">🇺🇸 ZDA</option>
+          <option value="FR">🇫🇷 Francija</option>
+          <option value="PL">🇵🇱 Poljska</option>
+          <option value="CZ">🇨🇿 Češka</option>
+          <option value="SK">🇸🇰 Slovaška</option>
+          <option value="HU">🇭🇺 Madžarska</option>
+        </select>
+        <select id="rbg">
+          <option value="">Vsi žanri</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="jazz">Jazz</option>
+          <option value="classical">Classical</option>
+          <option value="electronic">Electronic</option>
+          <option value="news">News</option>
+          <option value="talk">Talk</option>
+          <option value="folk">Folk</option>
+          <option value="metal">Metal</option>
+          <option value="dance">Dance</option>
+        </select>
+      </div>
+      <div class="srrow">
+        <input id="rbq" placeholder="Ime postaje..."
+               onkeydown="if(event.key==='Enter')rbSearch()">
+        <button class="btn bplay" style="padding:6px 12px;font-size:.82rem;white-space:nowrap"
+                onclick="rbSearch()">🔍 Išči</button>
+      </div>
+      <div id="rbstat" style="font-size:.75rem;color:var(--muted);margin-bottom:6px"></div>
+      <ul id="rblist"></ul>
+    </div>
+    <div class="mfoot">
+      <button class="btn bstop" style="padding:7px 14px" onclick="closeSr()">Prekliči</button>
+      <button class="btn bplay" style="padding:7px 14px" onclick="addRB()">✓ Dodaj izbrane</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIO — enostavno, brez Web Audio API -->
+<audio id="aud" preload="none" crossorigin="anonymous"></audio>
+
+<script>
+// ─── State ───────────────────────────────────────────
+const SK='rk_stations', SK2='rk_settings';
+let stations=[], sett={vol:.6,boost:.3,boostOn:false,lastSt:''};
+let curIdx=-1, playing=false, timerIv=null, timerSec=0;
+let edIdx=-1, selEdIdx=-1, rbSel=new Set(), rbRes=[];
+let gainCtx=null, gainNode=null, srcConnected=false;
+
+const aud=document.getElementById('aud');
+
+// ─── Audio init (lazy — po kliku) ────────────────────
+function initAudio(){
+  if(gainCtx) return;
+  try{
+    gainCtx=new(window.AudioContext||window.webkitAudioContext)();
+    gainNode=gainCtx.createGain();
+    gainNode.gain.value=sett.vol;
+    // Poveži source → gain → output
+    const src=gainCtx.createMediaElementSource(aud);
+    src.connect(gainNode);
+    gainNode.connect(gainCtx.destination);
+    srcConnected=true;
+  }catch(e){
+    // Fallback: brez Web Audio, samo audio.volume
+    gainCtx=null; gainNode=null;
+    console.warn('Web Audio API ni na voljo, folosim audio.volume');
+  }
+}
+
+function setVol(v){
+  v=Math.max(0,Math.min(1,v));
+  if(gainNode) gainNode.gain.value=v;
+  else         aud.volume=v;
+}
+
+// ─── Init ─────────────────────────────────────────────
+function init(){
+  // Naloži nastavitve
+  try{ const s=JSON.parse(localStorage.getItem(SK2)||'{}');
+       sett={...sett,...s}; }catch(e){}
+  // Naloži postaje
+  try{ const s=JSON.parse(localStorage.getItem(SK));
+       if(Array.isArray(s)&&s.length) stations=s;
+       else loadDefaults(); }
+  catch(e){ loadDefaults(); }
+
+  applySettings();
+  renderAll();
+}
+
+function loadDefaults(){
+  stations=[
+    {name:'Val 202',url:'https://mp3.rtvslo.si/val202',icon:'',kw:''},
+    {name:'Radio Slovenija 1',url:'https://mp3.rtvslo.si/prvi',icon:'',kw:''},
+    {name:'ARS',url:'https://mp3.rtvslo.si/ars',icon:'',kw:''},
+    {name:'Radio Koper',url:'https://mp3.rtvslo.si/kapo',icon:'',kw:''},
+    {name:'ROCK 1',url:'https://mp3.rtvslo.si/rock',icon:'',kw:''},
+    {name:'Best FM',url:'https://live.radio.si/BestFM',icon:'',kw:''},
+    {name:'Radio Maribor',url:'https://mp3.rtvslo.si/rmb',icon:'',kw:''},
+    {name:'Radio Capodistria',url:'https://mp3.rtvslo.si/capodistria',icon:'',kw:''},
+  ];
+}
+
+function saveSetts(){ localStorage.setItem(SK2,JSON.stringify(sett)); }
+function saveStations(){ localStorage.setItem(SK,JSON.stringify(stations)); }
+
+function applySettings(){
+  document.getElementById('vsl').value=Math.round(sett.vol*100);
+  document.getElementById('bsl').value=Math.round(sett.boost*100);
+  document.getElementById('vval').textContent=Math.round(sett.vol*100)+'%';
+  document.getElementById('bval').textContent='+'+Math.round(sett.boost*100)+'%';
+  updateBoostUI();
+  // Obnovi zadnjo postajo
+  const idx=sett.lastSt ? stations.findIndex(s=>s.name===sett.lastSt) : 0;
+  if(idx>=0) selStation(idx,false);
+  else if(stations.length) selStation(0,false);
+}
+
+// ─── Render ───────────────────────────────────────────
+function renderAll(){ renderSel(); renderGrid(); renderIcon(); }
+
+function renderSel(){
+  const el=document.getElementById('stsel');
+  el.innerHTML=stations.map((s,i)=>
+    `<option value="${i}">${escH(s.name)}</option>`).join('');
+  if(curIdx>=0) el.value=curIdx;
+}
+
+function renderGrid(){
+  const g=document.getElementById('grid');
+  g.innerHTML='';
+  for(let i=0;i<16;i++){
+    const s=stations[i];
+    const d=document.createElement('div');
+    d.className='gbtn'+(i===curIdx?' act':'')+(s?'':' gempty');
+    if(s){
+      d.title=s.name;
+      d.onclick=()=>{ selStation(i); onPlay(); };
+      if(s.icon){
+        d.innerHTML=`<img src="${escH(s.icon)}" onerror="this.style.display='none';
+          this.nextSibling.style.display='flex'">
+          <div class="ginitials" style="display:none">${ini(s.name)}</div>
+          <div class="gname">${escH(s.name)}</div>`;
+      }else{
+        d.innerHTML=`<div class="ginitials">${ini(s.name)}</div>
+          <div class="gname">${escH(s.name)}</div>`;
+      }
+    }
+    g.appendChild(d);
+  }
+}
+
+function renderIcon(){
+  const el=document.getElementById('aico');
+  const s=stations[curIdx];
+  if(!s){el.textContent='?';return;}
+  if(s.icon){
+    el.innerHTML=`<img src="${escH(s.icon)}"
+      onerror="this.parentNode.textContent='${ini(s.name)}'">`;
+  }else{ el.textContent=ini(s.name); }
+}
+
+function ini(n){ return n.split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase()||'?'; }
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+// ─── Station selection ────────────────────────────────
+function selStation(idx,play=false){
+  curIdx=idx;
+  document.getElementById('stsel').value=idx;
+  sett.lastSt=(stations[idx]||{}).name||'';
+  saveSetts();
+  renderGrid(); renderIcon();
+  document.getElementById('nowp').textContent='—';
+  document.getElementById('nowp').className='nowplay';
+  if(play) doPlay();
+}
+function onSel(){ selStation(parseInt(document.getElementById('stsel').value)); }
+function prevSt(){ if(!stations.length)return; selStation(((curIdx-1)+stations.length)%stations.length); }
+function nextSt(){ if(!stations.length)return; selStation((curIdx+1)%stations.length); }
+
+// ─── Playback ─────────────────────────────────────────
+function onPlay(){
+  initAudio(); // lazy init po user gesture
+  if(gainCtx&&gainCtx.state==='suspended') gainCtx.resume();
+  doPlay();
+}
+
+function doPlay(){
+  if(curIdx<0||!stations[curIdx]) return;
+  const s=stations[curIdx];
+  // Nastavi src in zaženi
+  aud.pause();
+  aud.removeAttribute('src');
+  aud.load();
+  aud.src=s.url;
+  setVol(sett.vol);
+  const p=aud.play();
+  if(p&&p.catch){
+    p.catch(e=>{
+      setStatus('Napaka: '+e.message);
+      document.getElementById('warn').style.display='block';
+      playing=false;
+    });
+  }
+  playing=true;
+  setStatus('Polnim… — '+s.name);
+}
+
+function onStop(){
+  aud.pause();
+  aud.src='';
+  aud.load();
+  playing=false;
+  setVol(sett.vol);
+  setStatus('Ustavljeno');
+  document.getElementById('dot').classList.remove('live');
+  document.getElementById('bstop').classList.remove('on');
+  document.getElementById('nowp').textContent='—';
+  document.getElementById('nowp').className='nowplay';
+  document.getElementById('hinfo').textContent='Web · v1.0';
+}
+
+aud.addEventListener('playing',()=>{
+  const s=stations[curIdx];
+  const n=s?s.name:'?';
+  setStatus('● V ŽIVO — '+n);
+  document.getElementById('dot').classList.add('live');
+  document.getElementById('bstop').classList.add('on');
+  document.getElementById('bstop').textContent='■ Ustavi';
+  document.getElementById('hinfo').textContent='V ŽIVO · '+n;
+  setVol(sett.vol);
+});
+aud.addEventListener('waiting',()=>setStatus('Polnim…'));
+aud.addEventListener('error',e=>{
+  setStatus('Napaka pri predvajanju');
+  document.getElementById('warn').style.display='block';
+  document.getElementById('dot').classList.remove('live');
+  playing=false;
+});
+aud.addEventListener('stalled',()=>setStatus('Prekinitev streama…'));
+
+function setStatus(m){ document.getElementById('statbar').textContent=m; }
+
+// ─── Volume ───────────────────────────────────────────
+function onVol(v){
+  sett.vol=v/100;
+  document.getElementById('vval').textContent=v+'%';
+  setVol(sett.vol);
+  saveSetts();
+}
+function onBoostVal(v){
+  sett.boost=v/100;
+  document.getElementById('bval').textContent='+'+v+'%';
+  saveSetts();
+}
+function toggleBoost(){
+  sett.boostOn=!sett.boostOn;
+  updateBoostUI(); saveSetts();
+}
+function updateBoostUI(){
+  const d=document.getElementById('bdot');
+  const l=document.getElementById('blbl');
+  if(sett.boostOn){ d.className='bdot on'; d.textContent='✓'; l.textContent='Dvig aktiven'; }
+  else{ d.className='bdot'; d.textContent='✕'; l.textContent='Dvig izklopljen'; }
+}
+
+// ─── Timer ────────────────────────────────────────────
+function startTimer(){
+  const min=parseInt(document.getElementById('tmin').value)||30;
+  timerSec=min*60;
+  if(timerIv){ clearInterval(timerIv); timerIv=null; }
+  timerIv=setInterval(timerTick,1000);
+  document.getElementById('tdisp').textContent=fmt(timerSec);
+}
+function stopTimer(){
+  if(timerIv){ clearInterval(timerIv); timerIv=null; }
+  document.getElementById('tdisp').textContent='';
+  setVol(sett.vol);
+}
+function timerTick(){
+  timerSec--;
+  document.getElementById('tdisp').textContent=fmt(timerSec);
+  if(timerSec<=60&&document.getElementById('fade').checked){
+    setVol(sett.vol*(timerSec/60));
+  }
+  if(timerSec<=0){ stopTimer(); onStop(); }
+}
+function fmt(s){ return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
+
+// ─── Editor ───────────────────────────────────────────
+function openEd(){ renderEdList(); document.getElementById('edov').classList.add('open'); }
+function closeEd(){ document.getElementById('edov').classList.remove('open'); renderAll(); saveStations(); }
+
+function renderEdList(){
+  document.getElementById('edlist').innerHTML=stations.map((s,i)=>`
+    <li class="sitem ${i===selEdIdx?'sel':''}" onclick="selEd(${i})">
+      <div class="sico">
+        ${s.icon?`<img src="${escH(s.icon)}" onerror="this.style.display='none'">`:''}
+        ${ini(s.name)}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="sname">${escH(s.name)}</div>
+        <div class="surl">${escH(s.url)}</div>
+      </div>
+      <span style="font-size:.65rem;color:var(--muted)">${i+1}</span>
+    </li>`).join('');
+}
+
+function selEd(i){
+  selEdIdx=i; edIdx=i;
+  renderEdList();
+  const s=stations[i];
+  document.getElementById('eform').style.display='block';
+  document.getElementById('fn').value=s.name;
+  document.getElementById('fu').value=s.url;
+  document.getElementById('fk').value=s.kw||'';
+  document.getElementById('fi').value=s.icon||'';
+}
+function newSt(){
+  edIdx=-1; selEdIdx=-1;
+  document.getElementById('eform').style.display='block';
+  ['fn','fu','fk','fi'].forEach(id=>document.getElementById(id).value='');
+  renderEdList();
+}
+function saveSt(){
+  const n=document.getElementById('fn').value.trim();
+  const u=document.getElementById('fu').value.trim();
+  if(!n||!u){alert('Ime in URL sta obvezna!');return;}
+  const st={name:n,url:u,kw:document.getElementById('fk').value.trim(),
+            icon:document.getElementById('fi').value.trim()};
+  if(edIdx>=0) stations[edIdx]=st; else stations.push(st);
+  saveStations(); edIdx=-1; renderEdList();
+  document.getElementById('eform').style.display='none';
+}
+function cancelEd(){ document.getElementById('eform').style.display='none'; edIdx=-1; }
+function delSt(){
+  if(selEdIdx<0) return;
+  if(!confirm(`Izbriši "${stations[selEdIdx].name}"?`)) return;
+  stations.splice(selEdIdx,1); selEdIdx=-1; saveStations();
+  document.getElementById('eform').style.display='none'; renderEdList();
+}
+function mvUp(){
+  if(selEdIdx<=0) return;
+  [stations[selEdIdx-1],stations[selEdIdx]]=[stations[selEdIdx],stations[selEdIdx-1]];
+  selEdIdx--; saveStations(); renderEdList();
+}
+function mvDn(){
+  if(selEdIdx<0||selEdIdx>=stations.length-1) return;
+  [stations[selEdIdx+1],stations[selEdIdx]]=[stations[selEdIdx],stations[selEdIdx+1]];
+  selEdIdx++; saveStations(); renderEdList();
+}
+function exportSt(){
+  const b=new Blob([JSON.stringify(stations,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download='radioklic_stations.json'; a.click();
+}
+function importSt(){ document.getElementById('ifile').click(); }
+function onImport(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(Array.isArray(d)){
+        if(confirm(`${d.length} postaj.\nOK=Dodaj, Prekliči=Zamenjaj`))
+          stations.push(...d);
+        else stations=d;
+        saveStations(); renderEdList();
+      }
+    }catch(err){alert('Napaka: '+err.message);}
+  };
+  r.readAsText(f); e.target.value='';
+}
+
+// ─── Radio Browser ────────────────────────────────────
+function openSr(){ document.getElementById('srov').classList.add('open'); rbSel.clear(); }
+function closeSr(){ document.getElementById('srov').classList.remove('open'); }
+
+async function rbSearch(){
+  const q=document.getElementById('rbq').value.trim();
+  const c=document.getElementById('rbc').value;
+  const g=document.getElementById('rbg').value;
+  const stat=document.getElementById('rbstat');
+  const ul=document.getElementById('rblist');
+  stat.textContent='Iščem…'; ul.innerHTML=''; rbRes=[]; rbSel.clear();
+  const srvs=['de1.api.radio-browser.info','nl1.api.radio-browser.info','at1.api.radio-browser.info'];
+  const srv=srvs[Math.floor(Math.random()*srvs.length)];
+  const p=new URLSearchParams({limit:100,order:'votes',reverse:'true',hidebroken:'true'});
+  if(q) p.set('name',q);
+  if(c) p.set('countrycode',c);
+  if(g) p.set('tag',g);
+  try{
+    const r=await fetch(`https://${srv}/json/stations/search?${p}`,
+      {headers:{'User-Agent':'RadioKlic-Web/1.0'}});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    rbRes=await r.json();
+    if(!rbRes.length){stat.textContent='Ni rezultatov.';return;}
+    stat.textContent=`Najdenih: ${rbRes.length}`;
+    ul.innerHTML=rbRes.map((s,i)=>`
+      <li class="rbitem" id="rb${i}" onclick="rbToggle(${i})">
+        <div class="rbico">
+          ${s.favicon?`<img src="${escH(s.favicon)}" onerror="this.style.display='none'">`:''}
+          ${ini(s.name)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="rbname">${escH(s.name)}</div>
+          <div class="rbmeta">${s.countrycode||''} · ${(s.tags||'').split(',')[0]||''} · ${s.bitrate||0}k · ♥${s.votes||0}</div>
+        </div>
+      </li>`).join('');
+  }catch(e){ stat.textContent='Napaka: '+e.message; }
+}
+
+function rbToggle(i){
+  rbSel.has(i)?rbSel.delete(i):rbSel.add(i);
+  document.getElementById('rb'+i)?.classList.toggle('sel',rbSel.has(i));
+}
+function addRB(){
+  if(!rbSel.size){alert('Izberi vsaj eno postajo!');return;}
+  let n=0;
+  for(const i of rbSel){
+    const s=rbRes[i]; if(!s) continue;
+    const url=s.url_resolved||s.url||''; if(!url) continue;
+    stations.push({name:s.name,url,icon:s.favicon||'',kw:''});
+    n++;
+  }
+  saveStations(); closeSr(); renderAll();
+  alert(`Dodanih ${n} postaj!`);
+}
+
+init();
+</script>
+</body>
+</html>
+<!-- patch: ICY metadata + boost logic -->
+<script>
+// ─── ICY Metadata reader ──────────────────────────────
+// Prebere StreamTitle iz ICY streama (deluje kjer server dovoli CORS)
+let icyInterval = null;
+let lastTitle = '';
+let boostActive = false;
+
+async function readICYMeta(url) {
+  if (sett.proxy) {
+    try {
+      const r = await fetch(sett.proxy.replace(/\/$/, '') + '/?url=' + encodeURIComponent(url));
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j.title || null;
+    } catch (e) { return null; }
+  }
+  try {
+    // Fetch z ICY-MetaData headerjem
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+
+    const res = await fetch(url, {
+      headers: { 'Icy-MetaData': '1', 'User-Agent': 'WinampMPEG/5.0' },
+      signal: ctrl.signal
+    });
+    clearTimeout(tid);
+
+    // Preberi icy-metaint iz response headerjev
+    const metaint = parseInt(res.headers.get('icy-metaint') || '0');
+    const icyName = res.headers.get('icy-name') || '';
+
+    if (!metaint || !res.body) {
+      // Ni ICY metapodatkov — vrni ime postaje iz headerja
+      res.body?.cancel?.();
+      return icyName || null;
+    }
+
+    // Preberi dovolj podatkov da dosežemo prvi metadata blok
+    const reader = res.body.getReader();
+    let buf = new Uint8Array(0);
+
+    while (buf.length < metaint + 512) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const nb = new Uint8Array(buf.length + value.length);
+      nb.set(buf); nb.set(value, buf.length);
+      buf = nb;
+    }
+    reader.cancel();
+
+    if (buf.length <= metaint) return icyName || null;
+
+    // Preberi metadata blok
+    const metaLen = buf[metaint] * 16;
+    if (metaLen === 0) return null;
+
+    const metaBytes = buf.slice(metaint + 1, metaint + 1 + metaLen);
+    const metaStr = new TextDecoder('utf-8', { fatal: false })
+      .decode(metaBytes).replace(/\0/g, '');
+
+    const m = metaStr.match(/StreamTitle='([^']*)'/);
+    return m ? m[1].trim() : (icyName || null);
+
+  } catch (e) {
+    return null;
+  }
+}
+
+// ─── Nadgradi onPlay ──────────────────────────────────
+const _origPlay = window.doPlay || function(){};
+
+// Posodobi event listener za playing
+document.getElementById('aud').addEventListener('playing', () => {
+  // Zaženi ICY polling
+  stopICY();
+  const s = stations[curIdx];
+  if (!s) return;
+  pollICY(s.url, s.kw || sett.keywords || '');
+}, true); // capture = true da se izvede pred originalnim
+
+function pollICY(url, kw) {
+  // Takoj preberi
+  fetchAndUpdate(url, kw);
+  // Ponavljaj vsakih 30s
+  icyInterval = setInterval(() => fetchAndUpdate(url, kw), 30000);
+}
+
+function stopICY() {
+  if (icyInterval) { clearInterval(icyInterval); icyInterval = null; }
+  // Ponastavi boost
+  if (boostActive) {
+    boostActive = false;
+    setVol(sett.vol);
+  }
+}
+
+async function fetchAndUpdate(url, kw) {
+  const title = await readICYMeta(url);
+
+  if (!title) {
+    // ICY ni na voljo — pokaži status brez naslova
+    updateNowPlaying(null);
+    return;
+  }
+
+  updateNowPlaying(title);
+
+  // Zaznaj govorno vsebino po ključnih besedah
+  if (sett.boostOn && kw) {
+    const keywords = kw.toLowerCase().split(';').map(k => k.trim()).filter(Boolean);
+    const titleLow = title.toLowerCase();
+    const isVoice = keywords.some(k => k && titleLow.includes(k));
+    applyVoiceBoost(isVoice, title);
+  }
+}
+
+function updateNowPlaying(title) {
+  const el = document.getElementById('nowp');
+  if (!title) {
+    el.textContent = '— (ICY metadata ni dostopen)';
+    el.className = 'nowplay';
+    return;
+  }
+  el.textContent = title;
+  el.className = 'nowplay' + (title ? ' live-txt' : '');
+  lastTitle = title;
+}
+
+function applyVoiceBoost(isVoice, title) {
+  const s = stations[curIdx];
+  const kw = (s?.kw || sett.keywords || '').toLowerCase();
+
+  if (isVoice && !boostActive) {
+    boostActive = true;
+    const target = Math.min(1.5, sett.vol + sett.boost);
+    smoothVol(target, 2.0);
+    showBoostBadge(true, title);
+  } else if (!isVoice && boostActive) {
+    boostActive = false;
+    smoothVol(sett.vol, 2.0);
+    showBoostBadge(false, title);
+  }
+}
+
+// Postopno spre lastni glasnosti
+let volTimer = null;
+function smoothVol(target, sec) {
+  if (volTimer) clearInterval(volTimer);
+  const steps = 20;
+  const start = gainNode ? gainNode.gain.value : (document.getElementById('aud').volume);
+  const delta = (target - start) / steps;
+  let i = 0;
+  volTimer = setInterval(() => {
+    i++;
+    setVol(start + delta * i);
+    if (i >= steps) clearInterval(volTimer);
+  }, (sec * 1000) / steps);
+}
+
+function showBoostBadge(on, title) {
+  const el = document.getElementById('nowp');
+  if (on) {
+    el.textContent = '🎙 ' + title;
+    el.style.color = 'var(--live)';
+  } else {
+    el.textContent = title;
+    el.style.color = '';
+  }
+}
+
+// ─── Posodobi onStop ──────────────────────────────────
+const _origStop = window.onStop;
+const _patchedStop = function() {
+  stopICY();
+  if (typeof _origStop === 'function') _origStop();
+};
+// Patch gumb
+document.getElementById('bstop').onclick = _patchedStop;
+
+// ─── Globalne nastavitve ─────────────────────────────
+// Dodaj polje za globalne ključne besede v settings
+sett.keywords = sett.keywords || 'govorna;glasovanje;pogovor;oddaja;gostje';
+
+// ─── Info v glavi: pokaži kaj se predvaja ────────────
+const _hdObserver = new MutationObserver(() => {
+  const np = document.getElementById('nowp').textContent;
+  const hinfo = document.getElementById('hinfo');
+  if (np && np !== '—' && !np.includes('ni dostopen')) {
+    hinfo.textContent = np.length > 40 ? np.slice(0,37)+'…' : np;
+  }
+});
+_hdObserver.observe(document.getElementById('nowp'),
+  { characterData: true, childList: true });
+
+function openSett(){
+  document.getElementById('set_kw').value = sett.keywords || '';
+  document.getElementById('set_proxy').value = sett.proxy || '';
+  document.getElementById('settd').showModal();
+}
+function saveSett(){
+  sett.keywords = document.getElementById('set_kw').value.trim();
+  sett.proxy = document.getElementById('set_proxy').value.trim();
+  saveSetts();
+  document.getElementById('settd').close();
+}
+function exportSt(){
+  const blob = new Blob([JSON.stringify(stations,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'radioklic-postaje.json'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importSt(inp){
+  const f = inp.files[0]; if(!f) return;
+  f.text().then(t => {
+    const arr = JSON.parse(t);
+    if(!Array.isArray(arr)) throw new Error('Neveljaven format');
+    const have = new Set(stations.map(x=>x.url));
+    arr.filter(x=>x && x.url && !have.has(x.url)).forEach(x=>stations.push({name:x.name||x.url,url:x.url,icon:x.icon||'',kw:x.kw||''}));
+    saveStations(); location.reload();
+  }).catch(e => alert('Uvoz ni uspel: '+e.message));
+}
+console.log('ICY metadata modul naložen.');
+</script>
