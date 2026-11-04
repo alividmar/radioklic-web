@@ -89,7 +89,7 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
   font-size:.58rem;font-weight:700;}
 .gname{font-size:.5rem;color:var(--muted);text-align:center;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%;padding:0 2px;}
-.gempty{opacity:.25;cursor:default;}
+.gempty{opacity:.25;cursor:pointer;}
 .gempty:hover{transform:none;border-color:var(--border);}
 
 /* Controls */
@@ -222,14 +222,17 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
   <!-- Postaja + aktivna ikona -->
   <div class="srow">
     <div class="sinfo card" style="margin:0;flex:1">
-      <div class="lbl">Postaja</div>
+      <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;gap:6px">Postaja
+        <span class="tools" style="display:flex;gap:4px;flex:0 0 auto">
+          <button class="btool" onclick="openEd()" title="Uredi">✏</button>
+          <button class="btool" onclick="openSr()" title="Išči postaje">🌍</button>
+          <button class="btool" onclick="openSett()" title="Nastavitve">⚙</button>
+        </span>
+      </div>
       <div class="ssel">
         <button class="bnav" onclick="prevSt()">◀</button>
         <select id="stsel" onchange="onSel()"></select>
         <button class="bnav" onclick="nextSt()">▶</button>
-        <button class="btool" style="margin-left:4px" onclick="openEd()">✏</button>
-        <button class="btool" onclick="openSr()">🌍</button>
-        <button class="btool" onclick="openSett()" title="Nastavitve">⚙</button>
       </div>
       <div class="lbl" style="margin-top:8px">Zdaj predvaja</div>
       <div class="nowplay" id="nowp">—</div>
@@ -382,6 +385,15 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
         <button class="btn bplay" style="padding:6px 12px;font-size:.82rem;white-space:nowrap"
                 onclick="rbSearch()">🔍 Išči</button>
       </div>
+      <div class="srrow" style="align-items:center">
+        <span style="font-size:.75rem;color:var(--muted)">Mesto:</span>
+        <select id="rbmode" style="flex:1.4">
+          <option value="end">Na konec</option>
+          <option value="insert">Vrini na mesto</option>
+          <option value="replace">Zamenjaj mesto</option>
+        </select>
+        <select id="rbslot" style="flex:1"></select>
+      </div>
       <div id="rbstat" style="font-size:.75rem;color:var(--muted);margin-bottom:6px"></div>
       <ul id="rblist"></ul>
     </div>
@@ -497,6 +509,7 @@ function renderGrid(){
     const s=stations[i];
     const d=document.createElement('div');
     d.className='gbtn'+(i===curIdx?' act':'')+(s?'':' gempty');
+    if(!s){ d.onclick=()=>openSr(i); d.title='Dodaj postajo na mesto '+(i+1); }
     if(s){
       d.title=s.name;
       d.onclick=()=>{ selStation(i); onPlay(); };
@@ -785,7 +798,16 @@ function onImport(e){
 }
 
 // ─── Radio Browser ────────────────────────────────────
-function openSr(){ document.getElementById('srov').classList.add('open'); rbSel.clear(); }
+function fillSlots(sel){
+  const n=Math.max(16,stations.length+1), el=document.getElementById('rbslot');
+  el.innerHTML=Array.from({length:n},(_,i)=>`<option value="${i}">${i+1}${stations[i]?' · '+escH(stations[i].name).slice(0,18):' · prazno'}</option>`).join('');
+  el.value=sel==null?Math.min(stations.length,n-1):sel;
+}
+function openSr(slot){
+  document.getElementById('srov').classList.add('open'); rbSel.clear();
+  fillSlots(typeof slot==='number'?slot:null);
+  document.getElementById('rbmode').value=typeof slot==='number'?(stations[slot]?'insert':'replace'):'end';
+}
 function closeSr(){ document.getElementById('srov').classList.remove('open'); }
 
 async function rbSearch(){
@@ -836,12 +858,19 @@ function rbToggle(i){
 function addRB(){
   if(!rbSel.size){alert('Izberi vsaj eno postajo!');return;}
   let n=0;
-  for(const i of rbSel){
+  const mode=document.getElementById('rbmode').value;
+  let pos=parseInt(document.getElementById('rbslot').value)||0;
+  const curName=(stations[curIdx]||{}).name;
+  for(const i of [...rbSel].sort((a,b)=>a-b)){
     const s=rbRes[i]; if(!s) continue;
     const url=s.url_resolved||s.url||''; if(!url) continue;
-    stations.push({name:s.name,url,icon:s.favicon||'',kw:''});
+    const st={name:s.name,url,icon:s.favicon||'',kw:''};
+    if(mode==='end'||pos>=stations.length&&mode!=='replace'){ stations.push(st); }
+    else if(mode==='insert'){ stations.splice(pos,0,st); pos++; }
+    else { if(pos<stations.length) stations[pos]=st; else stations.push(st); pos++; }
     n++;
   }
+  const ni=stations.findIndex(x=>x.name===curName); if(ni>=0) curIdx=ni;
   saveStations(); closeSr(); renderAll();
   alert(`Dodanih ${n} postaj!`);
 }
