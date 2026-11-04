@@ -351,7 +351,8 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
         <div class="fg"><label>Ikona URL (opcijsko)</label>
           <input id="fi" placeholder="https://..."></div>
         <div style="display:flex;gap:6px">
-          <button class="btn bplay" style="padding:7px 14px;font-size:.82rem" onclick="testSt()">▶ Preizkusi</button>
+          <button class="btn bplay" style="padding:7px 14px;font-size:.82rem" onclick="testSt()">▶ Preizkusi URL</button>
+          <span id="tstat" style="font-size:.78rem;align-self:center"></span>
           <button class="btn bplay" style="padding:7px 14px;font-size:.82rem"
                   onclick="saveSt()">💾 Shrani</button>
           <button class="btn bstop" style="padding:7px 14px;font-size:.82rem"
@@ -566,6 +567,7 @@ function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 // ─── Station selection ────────────────────────────────
 function selStation(idx,play=false){
+  testUrl='';
   curIdx=idx;
   document.getElementById('stsel').value=idx;
   sett.lastSt=(stations[idx]||{}).name||'';
@@ -604,6 +606,7 @@ function setPlayBtn(on){
   b.textContent=on?'■ Ustavi':'▶ Predvajaj'; b.classList.toggle('stop',!!on);
 }
 function togglePlay(){ if(wantPlay) document.getElementById('bstop').click(); else onPlay(); }
+let testUrl='';
 function doPlay(){
   if(curIdx<0||!stations[curIdx]) return;
   wantPlay=true; setPlayBtn(true);
@@ -613,7 +616,7 @@ function doPlay(){
   aud.pause();
   aud.removeAttribute('src');
   aud.load();
-  aud.src=playUrl(s.url);
+  aud.src=playUrl(testUrl||s.url);
   setVol(sett.vol);
   const p=aud.play();
   if(p&&p.catch){
@@ -782,9 +785,17 @@ function moveSt(){
   selEdIdx=to; edIdx=to; saveStations(); renderEdList(); selEd(to);
 }
 function testSt(){
-  if(selEdIdx<0) return;
-  closeEd(); selStation(selEdIdx); onPlay();
+  const u=document.getElementById('fu').value.trim();
+  if(!u){alert('Vpiši URL!');return;}
+  if(selEdIdx>=0){ curIdx=selEdIdx; }
+  testUrl=u; doPlay();
+  const t=document.getElementById('tstat'); t.textContent='⏳ Preizkušam…'; t.style.color='var(--muted)';
 }
+['playing','error'].forEach(ev=>aud.addEventListener(ev,()=>{
+  const t=document.getElementById('tstat'); if(!t||!testUrl) return;
+  if(ev==='playing'){t.textContent='✓ Deluje';t.style.color='var(--live)';}
+  else if(aud.getAttribute('src')){t.textContent='✗ Ne deluje (napaka toka)';t.style.color='var(--red)';}
+}));
 function newSt(){
   edIdx=-1; selEdIdx=-1;
   document.getElementById('mvbox').style.display='none';
@@ -798,7 +809,7 @@ function saveSt(){
   if(!n||!u){alert('Ime in URL sta obvezna!');return;}
   const st={name:n,url:u,kw:document.getElementById('fk').value.trim(),
             icon:document.getElementById('fi').value.trim()};
-  if(edIdx>=0) stations[edIdx]=st; else stations.push(st);
+  testUrl=''; if(edIdx>=0) stations[edIdx]=st; else stations.push(st);
   saveStations(); edIdx=-1; renderEdList();
   document.getElementById('eform').style.display='none';
 }
