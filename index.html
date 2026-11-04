@@ -327,7 +327,18 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
           <input id="fk" placeholder="govorna;glasovanje"></div>
         <div class="fg"><label>Ikona URL (opcijsko)</label>
           <input id="fi" placeholder="https://..."></div>
+        <div class="fg" id="mvbox"><label>Mesto v spominu</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="mvmode" style="flex:1.2">
+              <option value="insert">Vrini na mesto</option>
+              <option value="replace">Zamenjaj (med seboj)</option>
+            </select>
+            <select id="mvslot" style="flex:1"></select>
+            <button class="btn bplay" style="padding:6px 10px;font-size:.8rem" onclick="moveSt()">Premakni</button>
+          </div>
+        </div>
         <div style="display:flex;gap:6px">
+          <button class="btn bplay" style="padding:7px 14px;font-size:.82rem" onclick="testSt()">▶ Preizkusi</button>
           <button class="btn bplay" style="padding:7px 14px;font-size:.82rem"
                   onclick="saveSt()">💾 Shrani</button>
           <button class="btn bstop" style="padding:7px 14px;font-size:.82rem"
@@ -740,9 +751,30 @@ function selEd(i){
   document.getElementById('fu').value=s.url;
   document.getElementById('fk').value=s.kw||'';
   document.getElementById('fi').value=s.icon||'';
+  document.getElementById('mvbox').style.display='block';
+  document.getElementById('mvslot').innerHTML=stations.map((x,k)=>`<option value="${k}">${k+1} · ${escH(x.name).slice(0,18)}</option>`).join('');
+  document.getElementById('mvslot').value=i;
+}
+function moveSt(){
+  const from=selEdIdx; if(from<0||!stations[from]) return;
+  const to=parseInt(document.getElementById('mvslot').value);
+  if(isNaN(to)||to===from) return;
+  const cur=stations[curIdx];
+  if(document.getElementById('mvmode').value==='replace'){
+    [stations[from],stations[to]]=[stations[to],stations[from]];
+  }else{
+    const [x]=stations.splice(from,1); stations.splice(to,0,x);
+  }
+  const ni=stations.indexOf(cur); if(ni>=0) curIdx=ni;
+  selEdIdx=to; edIdx=to; saveStations(); renderEdList(); selEd(to);
+}
+function testSt(){
+  if(selEdIdx<0) return;
+  closeEd(); selStation(selEdIdx); onPlay();
 }
 function newSt(){
   edIdx=-1; selEdIdx=-1;
+  document.getElementById('mvbox').style.display='none';
   document.getElementById('eform').style.display='block';
   ['fn','fu','fk','fi'].forEach(id=>document.getElementById(id).value='');
   renderEdList();
