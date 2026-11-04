@@ -103,6 +103,10 @@ input[type=range]{width:100%;accent-color:var(--red);cursor:pointer;height:4px;}
 .bstop.on{background:var(--red);color:#fff;}
 .bstop{display:none !important;}
 .bplay{padding:13px 16px;font-size:1rem;}
+.sinfo{overflow:hidden;}
+.ssel{flex-wrap:wrap;row-gap:6px;}
+.ssel select{flex:1 1 140px;min-width:0;max-width:100%;text-overflow:ellipsis;}
+.ssel .bnav,.ssel .btool{flex:0 0 auto;}
 .bplay.stop{background:var(--red);}
 .ctrlcard{display:flex;gap:14px;align-items:center;}
 .ctrlcard .left{flex:1;min-width:0;}
@@ -791,16 +795,23 @@ async function rbSearch(){
   const stat=document.getElementById('rbstat');
   const ul=document.getElementById('rblist');
   stat.textContent='Iščem…'; ul.innerHTML=''; rbRes=[]; rbSel.clear();
-  const srvs=['de1.api.radio-browser.info','nl1.api.radio-browser.info','at1.api.radio-browser.info'];
-  const srv=srvs[Math.floor(Math.random()*srvs.length)];
+  const srvs=['de1.api.radio-browser.info','nl1.api.radio-browser.info','at1.api.radio-browser.info','de2.api.radio-browser.info'].sort(()=>Math.random()-.5);
   const p=new URLSearchParams({limit:100,order:'votes',reverse:'true',hidebroken:'true'});
   if(q) p.set('name',q);
   if(c) p.set('countrycode',c);
   if(g) p.set('tag',g);
   try{
-    const r=await fetch(`https://${srv}/json/stations/search?${p}`,
-      {headers:{'User-Agent':'RadioKlic-Web/1.0'}});
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    let r=null,last='';
+    for(const srv of srvs){
+      try{
+        const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
+        r=await fetch(`https://${srv}/json/stations/search?${p}`,{signal:ctl.signal});
+        clearTimeout(to);
+        if(r.ok) break;
+        last=`HTTP ${r.status}`; r=null;
+      }catch(err){ last=err.message; r=null; }
+    }
+    if(!r) throw new Error('strežniki niso dosegljivi ('+last+')');
     rbRes=await r.json();
     if(!rbRes.length){stat.textContent='Ni rezultatov.';return;}
     stat.textContent=`Najdenih: ${rbRes.length}`;
